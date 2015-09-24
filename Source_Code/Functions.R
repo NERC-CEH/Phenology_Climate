@@ -348,9 +348,9 @@ find_concurrent_period=function(temp_window,pred_C){
 
 get_chess <- function(phenseries){
 
-    patheast=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?x[",0,":1:",656,"]",sep="")
+    patheast=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?x[",0,":1:",655,"]",sep="")
     east=read.table(patheast,skip=5,header=FALSE,sep=",")[1,]
-    pathnorth=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?y[",0,":1:",1057,"]",sep="")
+    pathnorth=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?y[",0,":1:",1056,"]",sep="")
     north=read.table(pathnorth,skip=5,header=FALSE,sep=",")[1,]
 
     lonid=which(names(phenseries)=="Longitude.of.site.or.top.left.hand.corner.if.an.area..decimal.degrees.")
@@ -361,16 +361,17 @@ get_chess <- function(phenseries){
     wx=(which.min((east-coordinates(coords)[1])^2)-1)
 
     wt1=0
-    wt2=13513
+    wt2=19357
+    wt3=19357
 
     patht=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/tas_aggregation.ncml.ascii?tas[",wt1,":1:",wt2,"][",wy,":1:",wy,"][",wx,":1:",wx,"]",sep="")
-    pathp=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?precip[",wt1,":1:",wt2,"][",wy,":1:",wy,"][",wx,":1:",wx,"]",sep="")
+    pathp=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?precip[",wt1,":1:",wt3,"][",wy,":1:",wy,"][",wx,":1:",wx,"]",sep="")
 
     xt=try(read.table(patht,skip=11,header=TRUE,nrows=(1+(wt2-wt1))))
     if(class(xt)=="try-error"){xt=try(read.table(patht,skip=11,header=TRUE,nrows=(1+(wt2-wt1))))}
 
-    xp=try(read.table(pathp,skip=11,header=TRUE,nrows=(1+(wt2-wt1))))
-    if(class(xp)=="try-error"){xp=try(read.table(pathp,skip=11,header=TRUE,nrows=(1+(wt2-wt1))))}
+    xp=try(read.table(pathp,skip=11,header=TRUE,nrows=(1+(wt3-wt1))))
+    if(class(xp)=="try-error"){xp=try(read.table(pathp,skip=11,header=TRUE,nrows=(1+(wt3-wt1))))}
 
     yt=try(read.table(patht,skip=11+(wt2-wt1)+4,header=FALSE,nrows=1,sep=","))
     chess_dates = unlist(strsplit(as.character(unlist(strsplit(as.character(as.POSIXct((min(yt):max(yt))*60*60*24,origin="1961-01-01")[1:length(yt)]),"GMT"))),"[ ]"))[seq(1,length(yt)*2,by=2)]
@@ -483,7 +484,8 @@ mod=lmer(form,data=allphen)
 
 ###save model
 save(mod,file="Model_Out")
-write.csv(allphen,file="AllPhenData_from_mod.csv",row.names=FALSE)
+
+return(list(OutMod=mod,ModData=allphen))
 
 #save(allphen,mod,file="Model_Out.Rdata")
 
@@ -1014,10 +1016,9 @@ for(j in 1:length(idx)){
   }
 
 }
-write.csv(allphen,"AllPhenData_4mod.csv",row.names=FALSE)
 
-run_model(allphen=allphen,Interaction=model_interaction)
-load("Model_Out")
+mod_out <- run_model(allphen=allphen,Interaction=model_interaction)
+
 }
 
 fls <- list.files("IndivOut//")
@@ -1040,9 +1041,12 @@ allphen=t(allphen)
 
 
 if(model & plot_out){
-plot_output(mod=mod,plot_type=plot_type,Interaction=model_interaction)
+
+   plot_output(mod=mod_out$OutMod,plot_type=plot_type,Interaction=model_interaction)
 
 }
+
+return(mod_out)
 
 
 }
