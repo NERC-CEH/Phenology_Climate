@@ -451,6 +451,30 @@ allphen$Taxa[grep("Mammal",as.character(allphen$Taxonomic.Class.corr))]="Mammals
 allphen$Taxa[allphen$Species.latin.name=="Chlorophyll a" & allphen$Taxonomic.Class.corr=="Other"]="Algae"
 allphen$Taxa[allphen$Species.latin.name=="Chlorella" & allphen$Taxonomic.Class.corr=="Other"]="Algae"
 
+allphen$RND=paste(allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="_")
+
+allphen$Metric.class.corr.prox=as.character(allphen$Metric.class.corr)
+idz=which(allphen$Monitoring.scheme.name=="RIS Suction Trap Network" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="Fifth percentile of catch")
+allphen$Metric.class.corr.prox[idz]="First/Onset.2"
+
+idz=which(allphen$Monitoring.scheme.name=="Phil Bacon Atlantic salmon" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="annual arrival date")
+allphen$Metric.class.corr.prox[idz]="Mean/Median/Peak"
+
+idz=which(allphen$Monitoring.scheme.name=="UK PHEN" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="first flowering")
+allphen$Metric.class.corr.prox[idz]="First/Onset.2"
+idz=which(allphen$Monitoring.scheme.name=="UK PHEN" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="first ripe fruit")
+allphen$Metric.class.corr.prox[idz]="First/Onset.2"
+
+allphen$Metric.class.corr.prox=as.factor(allphen$Metric.class.corr.prox)
+
+allphen$VoltMetric=paste(allphen$Voltinism.corr,allphen$Metric.class.corr.prox,sep="")
+
+allphen$RND=paste(allphen$Monitoring.scheme.name,allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="_")
+
+allphen$UniVal=paste(allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="")
+      
+
+
 
 phendates = tapply(allphen$Day.of.year,allphen$UniVal,median,na.rm=TRUE)
 
@@ -1020,6 +1044,8 @@ for(j in 1:length(idx)){
 mod_out <- run_model(allphen=allphen,Interaction=model_interaction)
 
 }
+
+allphen = mod_out$ModData
 
 fls <- list.files("IndivOut//")
 idx <- grep("OutputData2",fls)
