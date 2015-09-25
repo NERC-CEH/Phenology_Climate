@@ -191,28 +191,7 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
     abline(h=quantile(pred_C$fit-100,0.975),col="blue",lwd=3)
     abline(h=quantile(pred_C$fit-100,0.025),col="blue",lwd=3)
 
-  #beta <- coef(sm_mod);Vb <- vcov(sm_mod)
-
-  ## simulate replicate beta vectors from posterior...
-  #Cv <- chol(Vb)
-  #n.rep=10000;nb <- length(beta)
-  #br <- t(Cv) %*% matrix(rnorm(n.rep*nb),nb,n.rep) + beta
-
-  ## turn these into replicate linear predictors...
-  #xp <- 0:(length(y))#/length(y)
-  #Xp <- predict(sm_mod,newdata=data.frame(y=xp),type="lpmatrix")
-  #lp <- Xp%*%br
-  #fv <- exp(lp) ## ... finally, replicate expected value vectors
-
-  ## now simulate from Gamma deviates with mean as in fv
-  ## and estimated scale...
-  #yr <- matrix(rgamma(fv*0,shape=1/sm_mod$scale,scale=fv*sm_mod$scale),nrow(fv),ncol(fv))
-
-  ## compute 95% prediction interval...
-  #PI_C <- apply(yr,1,quantile,prob=c(.025,0.975))
-  ## and plot it...
-  #lines(xp,PI_C[1,]-10,col=2,lwd=2,lty=3);lines(xp,PI_C[2,]-10,col=2,lwd=2,lty=3)
-
+ 
     plot(c(store_dat_prev[,2],store_dat[,2]),type="l",ylab="R Squared",xaxt="n",xlab="Month")
     abline(v=c(quantile(tempphen$Day.of.year,0.95),quantile(tempphen$Day.of.year,0.95)+365),col="green",lwd=2)
     axis(1,at=c(c(1,which(diff(tempclim$Month)[1:366]!=0)[1:11]),(c(1,which(diff(tempclim$Month)[1:366]!=0)[1:11])+366)),labels=rep(MonthName,2),cex.axis=0.6,las=2)
@@ -240,29 +219,7 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
     abline(h=quantile(pred_R$fit-100,0.975),col="blue",lwd=3)
     abline(h=quantile(pred_R$fit-100,0.025),col="blue",lwd=3)
 
-  #beta <- coef(sm_mod);Vb <- vcov(sm_mod)
-
-  ## simulate replicate beta vectors from posterior...
-  #Cv <- chol(Vb)
-  #n.rep=10000;nb <- length(beta)
-  #br <- t(Cv) %*% matrix(rnorm(n.rep*nb),nb,n.rep) + beta
-
-  ## turn these into replicate linear predictors...
-  #xp <- 0:(length(y))#/length(y)
-  #Xp <- predict(sm_mod,newdata=data.frame(y=xp),type="lpmatrix")
-  #lp <- Xp%*%br
-  #fv <- exp(lp) ## ... finally, replicate expected value vectors
-
-  ## now simulate from Gamma deviates with mean as in fv
-  ## and estimated scale...
-  #yr <- matrix(rgamma(fv*0,shape=1/sm_mod$scale,scale=fv*sm_mod$scale),nrow(fv),ncol(fv))
-
-  ## compute 95% prediction interval...
-  #PI_R <- apply(yr,1,quantile,prob=c(.025,0.975))
-  ## and plot it...
-  #lines(xp,PI_R[1,]-10,col=2,lwd=2,lty=3);lines(xp,PI_R[2,]-10,col=2,lwd=2,lty=3)
-
-
+ 
   ## get window dates
   if(mean(tempphen$Day.of.year)<=0){
   poss_dates <- all_dates[1:366]
@@ -433,48 +390,30 @@ run_model <- function(allphen,Interaction="None"){
 
 
 allphen$Taxa="Other"
-allphen$Taxa[grep("algal",as.character(allphen$Taxonomic.Class.corr))]="Algae"
-allphen$Taxa[grep("insect",as.character(allphen$Taxonomic.Class.corr))]="Insect"
-allphen$Taxa[grep("fish",as.character(allphen$Taxonomic.Class.corr))]="Fish"
-allphen$Taxa[grep("plants",as.character(allphen$Taxonomic.Class.corr))]="Plants"
-allphen$Taxa[grep("conifers",as.character(allphen$Taxonomic.Class.corr))]="Plants"
-allphen$Taxa[grep("birds",as.character(allphen$Taxonomic.Class.corr))]="Birds"
-allphen$Taxa[grep("amphibians",as.character(allphen$Taxonomic.Class.corr))]="Amphibians"
-allphen$Taxa[grep("algae",as.character(allphen$Taxonomic.Class.corr))]="Algae"
-allphen$Taxa[grep("cladocera",as.character(allphen$Taxonomic.Class.corr))]="Crustacea"
-allphen$Taxa[grep("molluscs",as.character(allphen$Taxonomic.Class.corr))]="Molluscs"
-allphen$Taxa[grep("barnacles",as.character(allphen$Taxonomic.Class.corr))]="Crustacea"
-allphen$Taxa[grep("lobsters",as.character(allphen$Taxonomic.Class.corr))]="Crustacea"
-allphen$Taxa[grep("Mammal",as.character(allphen$Taxonomic.Class.corr))]="Mammals"
+allphen$Taxa[grep("algal",as.character(allphen$Taxonomic.Class))]="Algae"
+allphen$Taxa[grep("insect",as.character(allphen$Taxonomic.Class))]="Insect"
+allphen$Taxa[grep("fish",as.character(allphen$Taxonomic.Class))]="Fish"
+allphen$Taxa[grep("plants",as.character(allphen$Taxonomic.Class))]="Plants"
+allphen$Taxa[grep("conifers",as.character(allphen$Taxonomic.Class))]="Plants"
+allphen$Taxa[grep("birds",as.character(allphen$Taxonomic.Class))]="Birds"
+allphen$Taxa[grep("amphibians",as.character(allphen$Taxonomic.Class))]="Amphibians"
+allphen$Taxa[grep("algae",as.character(allphen$Taxonomic.Class))]="Algae"
+allphen$Taxa[grep("cladocera",as.character(allphen$Taxonomic.Class))]="Crustacea"
+allphen$Taxa[grep("molluscs",as.character(allphen$Taxonomic.Class))]="Molluscs"
+allphen$Taxa[grep("barnacles",as.character(allphen$Taxonomic.Class))]="Crustacea"
+allphen$Taxa[grep("lobsters",as.character(allphen$Taxonomic.Class))]="Crustacea"
+allphen$Taxa[grep("Mammal",as.character(allphen$Taxonomic.Class))]="Mammals"
 
 
-allphen$Taxa[allphen$Species.latin.name=="Chlorophyll a" & allphen$Taxonomic.Class.corr=="Other"]="Algae"
-allphen$Taxa[allphen$Species.latin.name=="Chlorella" & allphen$Taxonomic.Class.corr=="Other"]="Algae"
+allphen$Taxa[allphen$Species.latin.name=="Chlorophyll a" & allphen$Taxonomic.Class=="Other"]="Algae"
+allphen$Taxa[allphen$Species.latin.name=="Chlorella" & allphen$Taxonomic.Class=="Other"]="Algae"
 
-allphen$RND=paste(allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="_")
-
-allphen$Metric.class.corr.prox=as.character(allphen$Metric.class.corr)
-idz=which(allphen$Monitoring.scheme.name=="RIS Suction Trap Network" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="Fifth percentile of catch")
-allphen$Metric.class.corr.prox[idz]="First/Onset.2"
-
-idz=which(allphen$Monitoring.scheme.name=="Phil Bacon Atlantic salmon" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="annual arrival date")
-allphen$Metric.class.corr.prox[idz]="Mean/Median/Peak"
-
-idz=which(allphen$Monitoring.scheme.name=="UK PHEN" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="first flowering")
-allphen$Metric.class.corr.prox[idz]="First/Onset.2"
-idz=which(allphen$Monitoring.scheme.name=="UK PHEN" & allphen$Metric.class.corr=="First/Onset" & allphen$Specific.metric=="first ripe fruit")
-allphen$Metric.class.corr.prox[idz]="First/Onset.2"
-
-allphen$Metric.class.corr.prox=as.factor(allphen$Metric.class.corr.prox)
-
-allphen$VoltMetric=paste(allphen$Voltinism.corr,allphen$Metric.class.corr.prox,sep="")
+allphen$VoltMetric=paste(allphen$Voltinism,allphen$Metric.class,sep="")
 
 allphen$RND=paste(allphen$Monitoring.scheme.name,allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="_")
 
 allphen$UniVal=paste(allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="")
       
-
-
 
 phendates = tapply(allphen$Day.of.year,allphen$UniVal,median,na.rm=TRUE)
 
@@ -494,7 +433,6 @@ allphen$PhenSeas[allphen$MeanDOY>244]="AutumnWinter"
 ##run model
 library(lme4)
 
-allphen$VoltMetric=paste(allphen$Voltinism,allphen$Metric.class,sep="")
 
 switch(Interaction,
 None={form=as.formula(Day.of.year~Tmean_l+Tmean_u+Precip_l+Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Species.latin.name/VoltMetric))},
