@@ -44,7 +44,7 @@ Climate_Windows <- function(phendat,climdat=NULL,rand=FALSE) {
     #resid_var <- var((predict(mod,type="response")-365)-phendat$Day.of.year)
 
     ## add column names and things like site id, metric, species etc.
-    Out_Info=c(coef_est,sterr_est,pval_est,intercept,resid_var,100*(1-(summary(mod)$deviance/summary(mod)$null.deviance)),Tmean_l_u$DOY_l[1],Tmean_l_u$DOY_l[2],Tmean_l_u$DOY_u[1],Tmean_l_u$DOY_u[2],Precip_l_u$DOY_l[1],Precip_l_u$DOY_l[2],Precip_l_u$DOY_u[1],Precip_l_u$DOY_u[2],AIC(mod)-AIC(nullmod),summary(nullmod)$coefficients[2,1],var(phendat$Day.of.year), var(phendat$Tmean_l,na.rm=TRUE), var(phendat$Tmean_u,na.rm=TRUE), var(phendat$Precip_l,na.rm=TRUE), var(phendat$Precip_u,na.rm=TRUE), c(as.matrix(phendat[1,])))
+    Out_Info=c(coef_est,sterr_est,pval_est,intercept,resid_var,100*(1-(summary(mod)$deviance/summary(mod)$null.deviance)),Tmean_l_u$DOY_l[1],Tmean_l_u$DOY_l[2],Tmean_l_u$DOY_u[1],Tmean_l_u$DOY_u[2],Precip_l_u$DOY_l[1],Precip_l_u$DOY_l[2],Precip_l_u$DOY_u[1],Precip_l_u$DOY_u[2],AIC(mod)-AIC(nullmod),summary(nullmod)$coefficients[2,1],var(phendat$Day.of.year), var(phendat$Tmean_l,na.rm=TRUE), var(phendat$Tmean_u,na.rm=TRUE), var(phendat$Precip_l,na.rm=TRUE), var(phendat$Precip_u,na.rm=TRUE), c(as.matrix(phendat[which.max(phendat$Year),])))
 
     nm_idx=match(c("Year","Day.of.year","Species.common.name","Species.latin.name", "Monitoring.scheme.name"
      ,"Site.name"
@@ -1019,6 +1019,28 @@ newsummdat[,k]=as.character(summdat[,k])
 summdat=data.frame(newsummdat)
 
 names(summdat)=c(paste("Coef.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("St_Err.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("Pval.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),"Mod_Intercept","Resid_Var","Percent.Deviance.Explained","Temp.Window.Start.L","Temp.Window.End.L","Temp.Window.Start.U","Temp.Window.End.U","Precip.Window.Start.L","Precip.Window.End.L","Precip.Window.Start.U","Precip.Window.End.U","AIC.Diff.to.Null","Phen.Change.over.time","Variance.Phenology",paste("Variance.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),names(curr_phen))
+
+summdat$Taxa="Other"
+summdat$Taxa[grep("algal",as.character(summdat$Taxonomic.Class))]="Algae"
+summdat$Taxa[grep("insect",as.character(summdat$Taxonomic.Class))]="Insect"
+summdat$Taxa[grep("fish",as.character(summdat$Taxonomic.Class))]="Fish"
+summdat$Taxa[grep("plants",as.character(summdat$Taxonomic.Class))]="Plants"
+summdat$Taxa[grep("conifers",as.character(summdat$Taxonomic.Class))]="Plants"
+summdat$Taxa[grep("birds",as.character(summdat$Taxonomic.Class))]="Birds"
+summdat$Taxa[grep("amphibians",as.character(summdat$Taxonomic.Class))]="Amphibians"
+summdat$Taxa[grep("algae",as.character(summdat$Taxonomic.Class))]="Algae"
+summdat$Taxa[grep("cladocera",as.character(summdat$Taxonomic.Class))]="Crustacea"
+summdat$Taxa[grep("molluscs",as.character(summdat$Taxonomic.Class))]="Molluscs"
+summdat$Taxa[grep("barnacles",as.character(summdat$Taxonomic.Class))]="Crustacea"
+summdat$Taxa[grep("lobsters",as.character(summdat$Taxonomic.Class))]="Crustacea"
+summdat$Taxa[grep("Mammal",as.character(summdat$Taxonomic.Class))]="Mammals"
+
+
+summdat$Taxa[summdat$Species.latin.name=="Chlorophyll a" & summdat$Taxonomic.Class=="Other"]="Algae"
+summdat$Taxa[summdat$Species.latin.name=="Chlorella" & summdat$Taxonomic.Class=="Other"]="Algae"
+
+
+
 
 allphen <- summdat
 
