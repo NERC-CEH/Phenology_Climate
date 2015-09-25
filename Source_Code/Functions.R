@@ -602,7 +602,7 @@ legend("topright",legend=as.character(vars),text.col = coli,bty="n",lty=1,col=co
 ####################
 
 
-plot_output <- function(mod,plot_type="Slopes",Interaction="None"){
+plot_output <- function(mod,allphen,plot_type="Slopes",Interaction="None"){
 
   if(Interaction=="None"){
   
@@ -610,7 +610,7 @@ plot_output <- function(mod,plot_type="Slopes",Interaction="None"){
   
   }else{
   
-      allphen=read.csv("AllphenData_from_mod.csv")
+      #allphen=read.csv("AllphenData_from_mod.csv")
   
       switch(Interaction,
       "TrophicLevel"={colid=14},
@@ -988,29 +988,48 @@ allphen = mod_out$ModData
 fls <- list.files("IndivOut//")
 idx <- grep("OutputData2",fls)
 
-## collate all data
-
 for(j in 1:length(idx)){
 
-  curr_phen <- read.csv(paste("IndivOut//",fls[idx[j]],sep=""))
+  curr_summ <- t(read.csv(paste("IndivOut//",fls[idx[j]],sep="")))
 
   if(j==1){
-     allphen <- curr_phen
+     summdat <- curr_summ
   }else{
-     allphen <- cbind(allphen,curr_phen)
+     summdat <- rbind(summdat,curr_summ)
   }
 
 }
-allphen=t(allphen)
 
+for(k in 1:65){
+summdat[,k]=unlist(summdat[,k])
+}
+
+newsummdat=matrix(ncol=65,nrow=length(summdat[,1]))
+
+for(k in c(1:15,24:30,38:41,62:65)){
+newsummdat[,k]=as.numeric(summdat[,k])
+}
+for(k in c(16:23,31:32,37,42,47)){
+newsummdat[,k]=as.integer(summdat[,k])
+}
+for(k in c(33:36,43,48:61)){
+newsummdat[,k]=as.character(summdat[,k])
+}
+
+summdat=data.frame(newsummdat)
+
+names(summdat)=c(paste("Coef.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("St_Err.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("Pval.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),"Mod_Intercept","Resid_Var","Percent.Deviance.Explained","Temp.Window.Start.L","Temp.Window.End.L","Temp.Window.Start.U","Temp.Window.End.U","Precip.Window.Start.L","Precip.Window.End.L","Precip.Window.Start.U","Precip.Window.End.U","AIC.Diff.to.Null","Phen.Change.over.time","Variance.Phenology",paste("Variance.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),names(curr_phen))
+
+allphen <- summdat
 
 if(model & plot_out){
 
-   plot_output(mod=mod_out$OutMod,plot_type=plot_type,Interaction=model_interaction)
+   plot_output(mod=mod_out$OutMod,allphen=mod_out$ModData,plot_type=plot_type,Interaction=model_interaction)
 
 }
 
-return(mod_out)
+if(model){return(list(OutMod=mod_out$OutMod,ModData=mod_out$ModData,SummaryData=summdat))}
+else{return(list(SummaryData=summdat))}
 
 
 }
