@@ -1,4 +1,4 @@
-
+     
 ############################################################################################
 ####
 ####    set of functions to run climate / phenology analysis. P Henrys. 
@@ -666,12 +666,22 @@ allphen$PhenSeas[allphen$MeanDOY>244]="AutumnWinter"
 library(lme4)
 
 #run mixed model based on interaction speciefied
+
+if(length(unique(allphen$Site.name))>1){
+switch(Interaction,
+None={form=as.formula(Day.of.year~Tmean_l+Tmean_u+Precip_l+Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Site.name/Species.latin.name/VoltMetric))},
+Taxa={form=as.formula(Day.of.year~Taxonomic.Class*Tmean_l+Taxonomic.Class*Tmean_u+Taxonomic.Class*Precip_l+Taxonomic.Class*Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Site.name/Species.latin.name/VoltMetric))},
+Environment={form=as.formula(Day.of.year~Environment*Tmean_l+Environment*Tmean_u+Environment*Precip_l+Environment*Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Site.name/Species.latin.name/VoltMetric))},
+TrophicLevel={form=as.formula(Day.of.year~Trophic.level*Tmean_l+Trophic.level*Tmean_u+Trophic.level*Precip_l+Trophic.level*Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Site.name/Species.latin.name/VoltMetric))}
+)
+}else{
 switch(Interaction,
 None={form=as.formula(Day.of.year~Tmean_l+Tmean_u+Precip_l+Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Species.latin.name/VoltMetric))},
 Taxa={form=as.formula(Day.of.year~Taxonomic.Class*Tmean_l+Taxonomic.Class*Tmean_u+Taxonomic.Class*Precip_l+Taxonomic.Class*Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Species.latin.name/VoltMetric))},
 Environment={form=as.formula(Day.of.year~Environment*Tmean_l+Environment*Tmean_u+Environment*Precip_l+Environment*Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Species.latin.name/VoltMetric))},
 TrophicLevel={form=as.formula(Day.of.year~Trophic.level*Tmean_l+Trophic.level*Tmean_u+Trophic.level*Precip_l+Trophic.level*Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Species.latin.name/VoltMetric))}
 )
+}
 
 mod=lmer(form,data=allphen)
 
