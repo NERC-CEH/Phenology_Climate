@@ -1,13 +1,175 @@
+
+############################################################################################
+####
+####    set of functions to run climate / phenology analysis. P Henrys. 
+####
+############################################################################################
+
+
+#####################
+#####################
+
+## wrapper function to run the find windows code, run the model and produce output plots. 
+
+mismatch_run <- function(phen_in,clim_in,rand=FALSE,plot_out=FALSE,model=FALSE,model_interaction="None",plot_type="Slopes"){
+
+#first split the phenoology data into unique time series to be analysed
+split_data(phen_in)
+
+#create folder to store outputs from all time series
+if(!file.exists(paste(getwd(),"//IndivOut",sep=""))){
+     dir.create(file.path(getwd(),"IndivOut//"))
+}
+
+
+#get list of all time series created by listing contents of folder
+fls=list.files("Split_Files//")
+
+
+##run the findo windows code across all time series, storing plots as single pdf file and writing the output data to temporary csv files
+pdf(file=paste("IndivOut//OutputPlots",sep="_"))
+
+   for(k in 1:length(fls)){
+
+      phen_indiv=read.csv(paste("Split_Files//",fls[k],sep=""))
+
+      Out_Info <- Climate_Windows(phendat=phen_indiv,climdat=clim_in,rand=rand)
+
+      write.csv(Out_Info$Mod_Data,file=paste("IndivOut//OutputData1_",k,sep=""),row.names=FALSE)
+      write.csv(Out_Info$Summary,file=paste("IndivOut//OutputData2_",k,sep=""),row.names=FALSE)
+
+   }
+
+dev.off()
+
+
+if(model){
+
+#if modelling, need to combine all data from unique csv files in the output folders created
+fls <- list.files("IndivOut//")
+idx <- grep("OutputData1",fls)
+
+## collate all data
+for(j in 1:length(idx)){
+
+  curr_phen <- read.csv(paste("IndivOut//",fls[idx[j]],sep=""))
+
+  if(j==1){
+     allphen <- curr_phen
+  }else{
+     allphen <- rbind(allphen,curr_phen)
+  }
+
+}
+
+#run model using all collated data with interaction specified in function
+mod_out <- run_model(allphen=allphen,Interaction=model_interaction)
+
+}
+
+#store the data used to build the mixed effects model
+allphen = mod_out$ModData
+
+
+#loop through all time series to store the summary data. eg 1 line per time series
+fls <- list.files("IndivOut//")
+idx <- grep("OutputData2",fls)
+
+#collate data
+for(j in 1:length(idx)){
+
+  curr_summ <- t(read.csv(paste("IndivOut//",fls[idx[j]],sep="")))
+
+  if(j==1){
+     summdat <- curr_summ
+  }else{
+     summdat <- rbind(summdat,curr_summ)
+  }
+
+}
+
+#ensure that the columns of the collated data are coded correctly.
+for(k in 1:65){
+summdat[,k]=unlist(summdat[,k])
+}
+
+newsummdat=matrix(ncol=65,nrow=length(summdat[,1]))
+
+for(k in c(1:15,24:30,38:41,62:65)){
+newsummdat[,k]=as.numeric(summdat[,k])
+}
+for(k in c(16:23,31:32,37,42,47)){
+newsummdat[,k]=as.integer(summdat[,k])
+}
+for(k in c(33:36,43,48:61)){
+newsummdat[,k]=as.character(summdat[,k])
+}
+
+
+summdat=data.frame(newsummdat)
+
+#give the summary data the corect names
+names(summdat)=c(paste("Coef.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("St_Err.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("Pval.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),"Mod_Intercept","Resid_Var","Percent.Deviance.Explained","Temp.Window.Start.L","Temp.Window.End.L","Temp.Window.Start.U","Temp.Window.End.U","Precip.Window.Start.L","Precip.Window.End.L","Precip.Window.Start.U","Precip.Window.End.U","AIC.Diff.to.Null","Phen.Change.over.time","Variance.Phenology",paste("Variance.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),names(curr_phen))
+
+#simplify the taxonomic definitions
+summdat$Taxa="Other"
+summdat$Taxa[grep("algal",as.character(summdat$Taxonomic.Class))]="Algae"
+summdat$Taxa[grep("insect",as.character(summdat$Taxonomic.Class))]="Insect"
+summdat$Taxa[grep("fish",as.character(summdat$Taxonomic.Class))]="Fish"
+summdat$Taxa[grep("plants",as.character(summdat$Taxonomic.Class))]="Plants"
+summdat$Taxa[grep("conifers",as.character(summdat$Taxonomic.Class))]="Plants"
+summdat$Taxa[grep("birds",as.character(summdat$Taxonomic.Class))]="Birds"
+summdat$Taxa[grep("amphibians",as.character(summdat$Taxonomic.Class))]="Amphibians"
+summdat$Taxa[grep("algae",as.character(summdat$Taxonomic.Class))]="Algae"
+summdat$Taxa[grep("cladocera",as.character(summdat$Taxonomic.Class))]="Crustacea"
+summdat$Taxa[grep("molluscs",as.character(summdat$Taxonomic.Class))]="Molluscs"
+summdat$Taxa[grep("barnacles",as.character(summdat$Taxonomic.Class))]="Crustacea"
+summdat$Taxa[grep("lobsters",as.character(summdat$Taxonomic.Class))]="Crustacea"
+summdat$Taxa[grep("Mammal",as.character(summdat$Taxonomic.Class))]="Mammals"
+
+
+summdat$Taxa[summdat$Species.latin.name=="Chlorophyll a" & summdat$Taxonomic.Class=="Other"]="Algae"
+summdat$Taxa[summdat$Species.latin.name=="Chlorella" & summdat$Taxonomic.Class=="Other"]="Algae"
+
+
+allphen <- summdat
+
+#if plot is required then run plot script using the summary data, model obtained and the interaction specified. 
+if(model & plot_out){
+
+   plot_output(mod=mod_out$OutMod,allphen=mod_out$ModData,plot_type=plot_type,Interaction=model_interaction)
+
+}
+
+
+#return all model data and summary data collated in this wrapper. 
+
+if(model){return(list(OutMod=mod_out$OutMod,ModData=mod_out$ModData,SummaryData=summdat))}
+else{return(list(SummaryData=summdat))}
+
+
+}
+
+
+ ##########################
+ ##########################
+ ##########################
+
+
+#Function to process phenology and climate data, find optimal windows, then fit phenology~climate model based on result
 Climate_Windows <- function(phendat,climdat=NULL,rand=FALSE) {
-     
+    
+    #load required package 
     require(mgcv) 
 
+    #if no climate data is provided, obtain CHESS data for corresponding location (only works behind NERC firewall)
     if(is.null(climdat)){
        temp_dat=get_chess(phendat)
     }else{
        temp_dat=climdat
     }
 
+    #Decompose the date into year, day of year and daymonth values needed for analysis
     tm <- strptime(temp_dat$Date,"%Y-%m-%d")
     temp_dat$Year = tm$year+1900
     temp_dat$DOY = tm$yday+1
@@ -20,21 +182,27 @@ Climate_Windows <- function(phendat,climdat=NULL,rand=FALSE) {
     #################################
     #################################
 
+    #Create empty columns in phenology data represeting climate from chosen window
     phendat$Tmean_l = phendat$Tmean_u = phendat$Precip_l = phendat$Precip_u = NA
 
+    #Run the find windows routine to deduce optimal temperature window
     Tmean_l_u <- find_window(param="Tmean",tempphen=phendat,tempclim=temp_dat,rand=rand)
+    #Store the average temperature across the chosen window period for upper and lower signals into empty vectors created. 
     phendat$Tmean_l = Tmean_l_u$Lower[match(phendat$Year,names(Tmean_l_u$Lower))]
     phendat$Tmean_u = Tmean_l_u$Upper[match(phendat$Year,names(Tmean_l_u$Upper))]
 
-   
+    #Run the find windows routine to deduce optimal precipitation window
     Precip_l_u <- find_window(param="Precip",tempphen=phendat,tempclim=temp_dat,rand=rand)
+    #Store the precipitation across the chosen window period for upper and lower signals into empty vectors created. 
     phendat$Precip_l = Precip_l_u$Lower[match(phendat$Year,names(Precip_l_u$Lower))]
     phendat$Precip_u = Precip_l_u$Upper[match(phendat$Year,names(Precip_l_u$Upper))]
 
+    #run a glm model with Gamma error distribution of phenological event timing against cliamte data from optimised windows
     mod=glm((Day.of.year+365)~Tmean_l + Tmean_u + Precip_l + Precip_u,family=Gamma,data=phendat)
+    #for comparison purposes fun a null model with year as the sole explanatory variable
     nullmod = glm((Day.of.year+365)~Year,family=Gamma,data=phendat)
 
-
+    #extract key summary info from the fitted glm and add to an output table
     mt_idx <- match(row.names(summary(mod)$coefficients)[-1],c("Tmean_l","Tmean_u","Precip_l","Precip_u"))
     coef_est <- rep(NA,4) ; coef_est[mt_idx] <-summary(mod)$coefficients[-1,1]
     sterr_est <- rep(NA,4) ; sterr_est[mt_idx] <-summary(mod)$coefficients[-1,2]
@@ -78,34 +246,47 @@ Climate_Windows <- function(phendat,climdat=NULL,rand=FALSE) {
     , "Tmean_u"
     ,"Tmean_l" ),names(phendat))
 
+
+    #return output table and the data that was used in the model
     return(list(Summary=Out_Info,Mod_Data=phendat[,nm_idx]))
 
 }
 
+#Code to find optimal window to extract climate data for and use in model 
 find_window = function(param,tempphen,tempclim,rand=FALSE){
 
+  #restrict all phenological records to after 1960 as no climate data available before this period
   tempphen<- tempphen[tempphen$Year>=1960,]
 
+  #Create a set of dates which are to be searched for the climate windows
   all_dates=rep(unique(tempclim$DateNonYear),2)
 
+  #create empty matrix to store the estimated coefficient and R squared values corresponding to the fit using climate on each specified day
   store_dat <- data.frame(Date=NA,Rsq=NA,Coef=NA)
 
+  #extract the climate variable in question from the submitted climate data set
   tempclim$modparam = tempclim[,grep(param,names(tempclim))]
+  #Create a unique id on which the climate data can be matched
   tempclim$match_id = paste(tempclim$Year,tempclim$DateNonYear,sep="_")
 
   ###loop over days
   for(i in unique(tempclim$DateNonYear)){
 
+    #restrict phenology data if using Feb29th as date. 
     if(i=="2_29"){tempphen1=tempphen[is.element(tempphen$Year,seq(1960,2020,by=4)),]}else{tempphen1=tempphen}
 
+    #create similar id to that above in the phenology data to match with the climate data
     tempphen1$match_id = paste(tempphen1$Year,i,sep="_")
+    #append the corresponding climate data (from the date in question) to the phenology data
     tempphen1$mean_temp <- tempclim$modparam[match(tempphen1$match_id,tempclim$match_id)]
 
+    #If single site analyses, no random effect is needed and linear models are run
     if(!rand){
         mod <- lm(Day.of.year~mean_temp,data=tempphen1)
         store_dat = rbind(store_dat,data.frame(Date=i,Rsq=summary(mod)$r.squared,Coef=summary(mod)$coefficients[2,1]))
     }
     else{
+        #if ranoom effects are needed (due to multiple sites) then run lme model
         if(length(tempphen1[,1])>4){
             mod <- lme(Day.of.year~mean_temp,random=list(Year=~1),data=tempphen1,na.action=na.exclude)
             store_dat = rbind(store_dat,data.frame(Date=i,Rsq=summary(lm(tempphen1$Day.of.year ~ mod$fitted[,2]))$r.squared,Coef=summary(mod)$coefficients$fixed[2]))
@@ -115,6 +296,8 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
     }
 
   }
+
+  ##re run all analyes above but corresponding to previous year
 
   #make sure the previous year is captured too
   store_dat_prev <- data.frame(Date=NA,Rsq=NA,Coef=NA)
@@ -159,21 +342,26 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
   store_dat_prev=store_dat_prev[-1,]
 
 
+
+  #Specify months
   MonthName=c("January","February","March","April","May","June","July","August","September","October","November","December")
 
 
-
+  #produce plot of dat of year against estimated coefficient
   par(mfrow=c(2,1))
     plot(c(store_dat_prev[,3],store_dat[,3]),type="l",ylab="Coefficients",xaxt="n",xlab="Month",main=paste(param," Fit :-  Species = ",unique(tempphen$Species.latin.name),"; Metric = ",unique(tempphen$Specific.metric),sep=""),cex.main=0.75)
+    #add the 95th percentiles of phenological event to plot
     abline(v=c(quantile(tempphen$Day.of.year,0.95),quantile(tempphen$Day.of.year,0.95)+365),col="green",lwd=2)
     axis(1,at=c(c(1,which(diff(tempclim$Month)[1:366]!=0)[1:11]),(c(1,which(diff(tempclim$Month)[1:366]!=0)[1:11])+366)),labels=rep(MonthName,2),cex.axis=0.6,las=2)
 
-
+    ##fit a gam smooth through the set of estimated coefficients using a glm and Gamma error distribution
     x=c(store_dat_prev[,3],store_dat[,3])+100
     x[x<=(0)]=0.001
     y=(1:732)
     sm_mod=gam(x~s(y,k=18,fx=TRUE),family=Gamma(link=log),method="REML",na.action=na.exclude)
     pred_C=predict(sm_mod,se.fit=TRUE,type="response")
+    
+    ##add fitted line and confidence interval to plot 
     lines(pred_C$fit-100,col="red",lwd=3.5)
     lines((pred_C$fit+1.96*pred_C$se.fit)-100,lty=2,col="red",lwd=3)
     lines((pred_C$fit-1.96*pred_C$se.fit)-100,lty=2,col="red",lwd=3)
@@ -187,11 +375,12 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
       pred_C$se.fit=pred_C$se.fit[ceiling(quantile(tempphen$Day.of.year,0.95)):floor(quantile(tempphen$Day.of.year,0.95)+366)]
     }
 
+    ##add upper and lower quantiles of coefficient to plot. these are used as "extreme" cutoff values later
     abline(h=0,col="cyan",lwd=2)
     abline(h=quantile(pred_C$fit-100,0.975),col="blue",lwd=3)
     abline(h=quantile(pred_C$fit-100,0.025),col="blue",lwd=3)
 
- 
+    #repeat plotting as above but for the R squared values rather than the coefficients
     plot(c(store_dat_prev[,2],store_dat[,2]),type="l",ylab="R Squared",xaxt="n",xlab="Month")
     abline(v=c(quantile(tempphen$Day.of.year,0.95),quantile(tempphen$Day.of.year,0.95)+365),col="green",lwd=2)
     axis(1,at=c(c(1,which(diff(tempclim$Month)[1:366]!=0)[1:11]),(c(1,which(diff(tempclim$Month)[1:366]!=0)[1:11])+366)),labels=rep(MonthName,2),cex.axis=0.6,las=2)
@@ -227,27 +416,34 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
   poss_dates <- all_dates[ceiling(quantile(tempphen$Day.of.year,0.95)):floor(quantile(tempphen$Day.of.year,0.95)+366)]
   }
 
+  ##find dates which exceed the extreme values defined by the upper and lower quantiles of the estimated coefficients
   coef_range_l <- which(((pred_C$fit-1.96*pred_C$se.fit)-100)<=quantile(pred_C$fit-100,0.025))
   coef_range_u <- which(((pred_C$fit+1.96*pred_C$se.fit)-100)>=quantile(pred_C$fit-100,0.975))
 
+  #simmilarly find which dates correspond to the high r squared values
   r_sq_range <- which(((pred_R$fit+1.96*pred_R$se.fit)-100)>=quantile(pred_R$fit-100,0.975))
 
+  #windows are defined as where the extreme coefficient dates overlap the extreme r squared dates 
   temp_window_l <- coef_range_l[is.element(coef_range_l,r_sq_range)]
   temp_window_u <- coef_range_u[is.element(coef_range_u,r_sq_range)]
 
+  ##if no dates overlap, then the extreme coefficient dates are chosen
   if(length(temp_window_l)==0){temp_window_l = coef_range_l}
   if(length(temp_window_u)==0){temp_window_u = coef_range_u}
 
-
+  ##ensure that a concurrent period is selected. 
   temp_window_l = find_concurrent_period(temp_window_l,pred_C=pred_C)
   temp_window_u = find_concurrent_period(temp_window_u,pred_C=pred_C)
 
+  #get the actual dates corresponding to chosen period
   tmp_wind_l <- poss_dates[temp_window_l]
   tmp_wind_u <- poss_dates[temp_window_u]
 
+  #extract the climate values at the chosen dates and store
   tmp_slim_l <- tempclim[is.element(tempclim$DateNonYear,tmp_wind_l),]
   tmp_slim_u <- tempclim[is.element(tempclim$DateNonYear,tmp_wind_u),]
 
+  #get the day of year corresponding to the chosen date eg 1 instead of 1_1 and 31 instead of 31_1
   doysl <- tempclim$DOY[match(tmp_wind_l,tempclim$DateNonYear)]
   doysu <- tempclim$DOY[match(tmp_wind_u,tempclim$DateNonYear)]
 
@@ -261,13 +457,15 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
     tmp_slim_u$Year[is.element(tmp_slim_u$DateNonYear,tmp_wind_u[idx])]=tmp_slim_u$Year[is.element(tmp_slim_u$DateNonYear,tmp_wind_u[idx])]+1
   }
 
+  #take average of climate data across the selected window
   mn_temps_l <- tapply(tmp_slim_l$modparam,tmp_slim_l$Year,mean)
   mn_temps_u <- tapply(tmp_slim_u$modparam,tmp_slim_u$Year,mean)
 
+  #store the corresponding climate for the phenology records (ensure order is correct)
   Temp_matched_l=mn_temps_l[match(tempphen$Year,names(mn_temps_l))]
   Temp_matched_u=mn_temps_u[match(tempphen$Year,names(mn_temps_u))]
 
-
+  #return the day of years of the chosen windows and the average climate in the periods matched to the phenology record.
   return(list(Lower=Temp_matched_l,Upper=Temp_matched_u,DOY_l=doysl[c(1,length(doysl))],DOY_u=doysu[c(1,length(doysu))]))
 
 }
@@ -276,14 +474,17 @@ find_window = function(param,tempphen,tempclim,rand=FALSE){
 ##############################################
 ##############################################
 
-
+#function to find concurrent window eg sequences of days
 find_concurrent_period=function(temp_window,pred_C){
 
+    #create dummy index
     idx=1
+    #find differences between submitted dates and note whic are greater than 1
     diff_id = c(1,which(diff(temp_window)>1))
 
     if(length(diff_id)>1){if((which(diff(temp_window)>1))[1]==1){diff_id=diff_id[-1]}}
     if(length(temp_window)>1){
+    #find all the  series of sequentioal dates and give unique id
     for(rv in 1:length(diff_id)){
 
       if(rv==length(diff_id)){
@@ -294,7 +495,8 @@ find_concurrent_period=function(temp_window,pred_C){
 
     }
     }
-
+    
+    #from the estimated coefficients and the concurrent window indices (idx) find which period has the most extreme average. call that the period to use
     mx_coef = which.max(tapply(abs(pred_C$fit[temp_window]),idx,mean))
 
     return(temp_window[idx==mx_coef])
@@ -303,17 +505,28 @@ find_concurrent_period=function(temp_window,pred_C){
 
 }
 
+
+#function to  extract CHESS data for chosen site if no climate data is provided
+
+##### only works inside NERC firewall #####
+
 get_chess <- function(phenseries){
 
+   #extract the easting data form CHESS
     patheast=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?x[",0,":1:",655,"]",sep="")
     east=read.table(patheast,skip=5,header=FALSE,sep=",")[1,]
+    #extract the northing data form CHESS
     pathnorth=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?y[",0,":1:",1056,"]",sep="")
     north=read.table(pathnorth,skip=5,header=FALSE,sep=",")[1,]
 
+    #extract the latitude and longitude of submitted site data from the phenology record
     lonid=which(names(phenseries)=="Longitude.of.site.or.top.left.hand.corner.if.an.area..decimal.degrees.")
     latid=which(names(phenseries)=="Latitude.of.site.or.top.left.hand.corner.if.an.area..decimal.degrees.")
+    
+    #convert latlon from phenology data to OS grid corresponding to CHESS coordinates
     coords <- LatLon_2_OS(phenseries[1,lonid],phenseries[1,latid])
 
+    #find nearest CHESS coordinates to the submitted values
     wy=(which.min((north-coordinates(coords)[2])^2)-1)
     wx=(which.min((east-coordinates(coords)[1])^2)-1)
 
@@ -321,18 +534,25 @@ get_chess <- function(phenseries){
     wt2=19357
     wt3=19357
 
+    #paste together values to complete html link to thredds database where CHESS is stored. Do this for both temperature and precipitation
+    ##this uses the opendap interface and ascii implementation within
     patht=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/tas_aggregation.ncml.ascii?tas[",wt1,":1:",wt2,"][",wy,":1:",wy,"][",wx,":1:",wx,"]",sep="")
     pathp=paste("http://thredds.nerc-lancaster.ac.uk/thredds/dodsC/chess/driving_data/aggregation/precip_aggregation.ncml.ascii?precip[",wt1,":1:",wt3,"][",wy,":1:",wy,"][",wx,":1:",wx,"]",sep="")
 
+
+    #read table that is returned from html link. try twice as first time often hangs up
     xt=try(read.table(patht,skip=11,header=TRUE,nrows=(1+(wt2-wt1))))
     if(class(xt)=="try-error"){xt=try(read.table(patht,skip=11,header=TRUE,nrows=(1+(wt2-wt1))))}
-
+      
+    #read table that is returned from html link. try twice as first time often hangs up
     xp=try(read.table(pathp,skip=11,header=TRUE,nrows=(1+(wt3-wt1))))
     if(class(xp)=="try-error"){xp=try(read.table(pathp,skip=11,header=TRUE,nrows=(1+(wt3-wt1))))}
 
+    #extract corresponding dates
     yt=try(read.table(patht,skip=11+(wt2-wt1)+4,header=FALSE,nrows=1,sep=","))
     chess_dates = unlist(strsplit(as.character(unlist(strsplit(as.character(as.POSIXct((min(yt):max(yt))*60*60*24,origin="1961-01-01")[1:length(yt)]),"GMT"))),"[ ]"))[seq(1,length(yt)*2,by=2)]
 
+    #compile full data set to return and use in remainder of analyses. 
     temp_dat <- data.frame(Date=chess_dates,Tmean=xt[,1]-273,Precip=xp[,1])
 
     return(temp_dat)
@@ -340,7 +560,7 @@ get_chess <- function(phenseries){
 }
 
 
-
+##function to convert OS coordinates to latitude and longitude using the rgdal package and tools within
 OS_2_LatLon <- function(xloc,yloc){
 
   require(rgdal);require(sp)
@@ -353,7 +573,7 @@ OS_2_LatLon <- function(xloc,yloc){
 
 }
 
-
+##function to convert latitude and longitude to OS coordinates using the rgdal package and tools within
 LatLon_2_OS <- function(xloc,yloc){
 
   require(rgdal);require(sp)
@@ -366,16 +586,21 @@ LatLon_2_OS <- function(xloc,yloc){
 
 }
 
+
+#function to split the submitted phenology file into individual time series for analysis. 
 split_data <- function(phen_in){
 
+  #create unique id that represent each unique time series considered in the analysis
   phen_in$UniVal <- paste(phen_in$Monitoring.scheme.name,phen_in$Site.name,phen_in$Species.latin.name,phen_in$Specific.metric,phen_in$Voltinism,sep="_")
 
+  #create folder to store csv files of each timr series
   if(!file.exists(paste(getwd(),"//Split_Files",sep=""))){
      dir.create(file.path(getwd(),"Split_Files//"))
   }
   
   for(k in 1:length(unique(phen_in$UniVal))){
 
+     #write each time series to seperate csv file and hold in folder created.
      write.csv(phen_in[phen_in$UniVal==((unique(phen_in$UniVal))[k]),],file=paste("Split_Files//phen_in",k,".csv",sep="_"),row.names=FALSE)
 
   }
@@ -384,11 +609,11 @@ split_data <- function(phen_in){
 
 
 
-##read in all data in output folder
 
+#function to run global mixed model including specified interaction on the phenoology climate data previously extracted
 run_model <- function(allphen,Interaction="None"){
 
-
+#sort taxanomic groups into higher levels.
 allphen$Taxa="Other"
 allphen$Taxa[grep("algal",as.character(allphen$Taxonomic.Class))]="Algae"
 allphen$Taxa[grep("insect",as.character(allphen$Taxonomic.Class))]="Insect"
@@ -408,24 +633,31 @@ allphen$Taxa[grep("Mammal",as.character(allphen$Taxonomic.Class))]="Mammals"
 allphen$Taxa[allphen$Species.latin.name=="Chlorophyll a" & allphen$Taxonomic.Class=="Other"]="Algae"
 allphen$Taxa[allphen$Species.latin.name=="Chlorella" & allphen$Taxonomic.Class=="Other"]="Algae"
 
+#define voltmetric as unique commbination of voltinism class and metric type
 allphen$VoltMetric=paste(allphen$Voltinism,allphen$Metric.class,sep="")
 
 allphen$RND=paste(allphen$Monitoring.scheme.name,allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="_")
 
+#create unique id. unique for all individual time series processed. 
 allphen$UniVal=paste(allphen$Site.name,allphen$Species.latin.name,allphen$VoltMetric,sep="")
       
-
+#extract the median phenological timing for each time series considered. 
 phendates = tapply(allphen$Day.of.year,allphen$UniVal,median,na.rm=TRUE)
+
 
 idx=match(allphen$UniVal,names(phendates))
 allphen$MeanDOY=NA
 allphen$MeanDOY=phendates[idx]
 
+#define "early" time series as those which have median timing before june 18th 
 allphen$EarlyLate="Early"
 allphen$EarlyLate[allphen$MeanDOY>181]="Late"
 
+#define "spring" time series as those which have median timing before day 151
 allphen$PhenSeas="WinterSpring"
+#summer event are those between day 152 and day 245
 allphen$PhenSeas[allphen$MeanDOY>152 & allphen$MeanDOY<245]="Summer"
+#winter events are after day 245
 allphen$PhenSeas[allphen$MeanDOY>244]="AutumnWinter"
 
 
@@ -433,7 +665,7 @@ allphen$PhenSeas[allphen$MeanDOY>244]="AutumnWinter"
 ##run model
 library(lme4)
 
-
+#run mixed model based on interaction speciefied
 switch(Interaction,
 None={form=as.formula(Day.of.year~Tmean_l+Tmean_u+Precip_l+Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Species.latin.name/VoltMetric))},
 Taxa={form=as.formula(Day.of.year~Taxonomic.Class*Tmean_l+Taxonomic.Class*Tmean_u+Taxonomic.Class*Precip_l+Taxonomic.Class*Precip_u +(1+Tmean_l+Tmean_u+Precip_l+Precip_u|Species.latin.name/VoltMetric))},
@@ -458,6 +690,8 @@ return(list(OutMod=mod,ModData=allphen))
 ##########
 ##########
 
+#function to plot estimated global coefficients from model
+## will plot either as density plots or the slopes themselves
 
 plot_mod_res <- function(mod,type="Dens"){
 library(lme4)
@@ -601,6 +835,8 @@ legend("topright",legend=as.character(vars),text.col = coli,bty="n",lty=1,col=co
 ####################
 ####################
 
+#plots the coefficients corresponding to the interasction level specified
+## will currently only plot as densities. 
 
 plot_output <- function(mod,allphen,plot_type="Slopes",Interaction="None"){
 
@@ -926,135 +1162,6 @@ plot_output <- function(mod,allphen,plot_type="Slopes",Interaction="None"){
 
 
 
-
-#####################
-#####################
-
-
-mismatch_run <- function(phen_in,clim_in,rand=FALSE,plot_out=FALSE,model=FALSE,model_interaction="None",plot_type="Slopes"){
-
-split_data(phen_in)
-
-
-if(!file.exists(paste(getwd(),"//IndivOut",sep=""))){
-     dir.create(file.path(getwd(),"IndivOut//"))
-}
-
-
-fls=list.files("Split_Files//")
-
-
-pdf(file=paste("IndivOut//OutputPlots",sep="_"))
-
-   for(k in 1:length(fls)){
-
-      phen_indiv=read.csv(paste("Split_Files//",fls[k],sep=""))
-
-      Out_Info <- Climate_Windows(phendat=phen_indiv,climdat=clim_in,rand=rand)
-
-      write.csv(Out_Info$Mod_Data,file=paste("IndivOut//OutputData1_",k,sep=""),row.names=FALSE)
-      write.csv(Out_Info$Summary,file=paste("IndivOut//OutputData2_",k,sep=""),row.names=FALSE)
-
-   }
-
-dev.off()
-
-
-if(model){
-
-fls <- list.files("IndivOut//")
-idx <- grep("OutputData1",fls)
-
-## collate all data
-
-for(j in 1:length(idx)){
-
-  curr_phen <- read.csv(paste("IndivOut//",fls[idx[j]],sep=""))
-
-  if(j==1){
-     allphen <- curr_phen
-  }else{
-     allphen <- rbind(allphen,curr_phen)
-  }
-
-}
-
-mod_out <- run_model(allphen=allphen,Interaction=model_interaction)
-
-}
-
-allphen = mod_out$ModData
-
-fls <- list.files("IndivOut//")
-idx <- grep("OutputData2",fls)
-
-for(j in 1:length(idx)){
-
-  curr_summ <- t(read.csv(paste("IndivOut//",fls[idx[j]],sep="")))
-
-  if(j==1){
-     summdat <- curr_summ
-  }else{
-     summdat <- rbind(summdat,curr_summ)
-  }
-
-}
-
-for(k in 1:65){
-summdat[,k]=unlist(summdat[,k])
-}
-
-newsummdat=matrix(ncol=65,nrow=length(summdat[,1]))
-
-for(k in c(1:15,24:30,38:41,62:65)){
-newsummdat[,k]=as.numeric(summdat[,k])
-}
-for(k in c(16:23,31:32,37,42,47)){
-newsummdat[,k]=as.integer(summdat[,k])
-}
-for(k in c(33:36,43,48:61)){
-newsummdat[,k]=as.character(summdat[,k])
-}
-
-summdat=data.frame(newsummdat)
-
-names(summdat)=c(paste("Coef.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("St_Err.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),paste("Pval.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),"Mod_Intercept","Resid_Var","Percent.Deviance.Explained","Temp.Window.Start.L","Temp.Window.End.L","Temp.Window.Start.U","Temp.Window.End.U","Precip.Window.Start.L","Precip.Window.End.L","Precip.Window.Start.U","Precip.Window.End.U","AIC.Diff.to.Null","Phen.Change.over.time","Variance.Phenology",paste("Variance.",c("Mean.Temp.L","Mean.Temp.U","Precip.L","Precip.U"),sep=""),names(curr_phen))
-
-summdat$Taxa="Other"
-summdat$Taxa[grep("algal",as.character(summdat$Taxonomic.Class))]="Algae"
-summdat$Taxa[grep("insect",as.character(summdat$Taxonomic.Class))]="Insect"
-summdat$Taxa[grep("fish",as.character(summdat$Taxonomic.Class))]="Fish"
-summdat$Taxa[grep("plants",as.character(summdat$Taxonomic.Class))]="Plants"
-summdat$Taxa[grep("conifers",as.character(summdat$Taxonomic.Class))]="Plants"
-summdat$Taxa[grep("birds",as.character(summdat$Taxonomic.Class))]="Birds"
-summdat$Taxa[grep("amphibians",as.character(summdat$Taxonomic.Class))]="Amphibians"
-summdat$Taxa[grep("algae",as.character(summdat$Taxonomic.Class))]="Algae"
-summdat$Taxa[grep("cladocera",as.character(summdat$Taxonomic.Class))]="Crustacea"
-summdat$Taxa[grep("molluscs",as.character(summdat$Taxonomic.Class))]="Molluscs"
-summdat$Taxa[grep("barnacles",as.character(summdat$Taxonomic.Class))]="Crustacea"
-summdat$Taxa[grep("lobsters",as.character(summdat$Taxonomic.Class))]="Crustacea"
-summdat$Taxa[grep("Mammal",as.character(summdat$Taxonomic.Class))]="Mammals"
-
-
-summdat$Taxa[summdat$Species.latin.name=="Chlorophyll a" & summdat$Taxonomic.Class=="Other"]="Algae"
-summdat$Taxa[summdat$Species.latin.name=="Chlorella" & summdat$Taxonomic.Class=="Other"]="Algae"
-
-
-
-
-allphen <- summdat
-
-if(model & plot_out){
-
-   plot_output(mod=mod_out$OutMod,allphen=mod_out$ModData,plot_type=plot_type,Interaction=model_interaction)
-
-}
-
-if(model){return(list(OutMod=mod_out$OutMod,ModData=mod_out$ModData,SummaryData=summdat))}
-else{return(list(SummaryData=summdat))}
-
-
-}
 
 
 
